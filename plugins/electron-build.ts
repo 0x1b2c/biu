@@ -4,6 +4,11 @@ import { build as electronBuild } from "electron-builder";
 import pkg from "../package.json";
 import { ELECTRON_OUT_DIRNAME, ELECTRON_ICON_BASE_PATH } from "../shared/path";
 
+// 本地安装模式：由 Makefile 触发，仅产出当前架构的 .app 目录，
+// 跳过签名、压缩与 dmg/zip 打包，便于 `make install` 直接拷贝到 /Applications
+const isLocalInstall = process.env.BIU_LOCAL_INSTALL === "1";
+const localArch: "arm64" | "x64" = process.arch === "arm64" ? "arm64" : "x64";
+
 export async function buildElectron() {
   await electronBuild({
     publish: "onTag",
@@ -48,17 +53,20 @@ export async function buildElectron() {
         artifactName: "${productName}-${version}-win-portable-${arch}.${ext}",
       },
       mac: {
-        target: [
-          { target: "dmg", arch: ["x64", "arm64"] },
-          { target: "zip", arch: ["x64", "arm64"] },
-        ],
+        target: isLocalInstall
+          ? [{ target: "dir", arch: [localArch] }]
+          : [
+              { target: "dmg", arch: ["x64", "arm64"] },
+              { target: "zip", arch: ["x64", "arm64"] },
+            ],
         category: "public.app-category.music",
         icon: `${ELECTRON_ICON_BASE_PATH}/biu.icon`,
-        hardenedRuntime: true,
+        hardenedRuntime: !isLocalInstall,
         gatekeeperAssess: false,
         darkModeSupport: true,
         entitlements: "plugins/mac/entitlements.mac.plist",
         entitlementsInherit: "plugins/mac/entitlements.mac.plist",
+        identity: isLocalInstall ? null : undefined,
         notarize: false,
         artifactName: "${productName}-${version}-mac-${arch}.${ext}",
         extraResources: [{ from: "electron/ffmpeg/ffmpeg-mac-${arch}", to: "electron/ffmpeg/ffmpeg-mac-${arch}" }],
