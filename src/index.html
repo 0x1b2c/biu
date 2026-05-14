@@ -1,12 +1,20 @@
 <!doctype html>
-<html lang="zh-CN" class="bg-background text-foreground">
+<html lang="zh-CN" class="text-foreground">
   <head>
     <meta charset="utf-8" />
     <meta name="description" content="windows music application" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Biu</title>
+    <style>
+      /*
+       * 让 HTML/body 在 React 挂载前保持透明，透出 BrowserWindow 的 backgroundColor。
+       * 主进程已根据 themeMode 同步计算出窗口背景色；此时若给 HTML 加 bg-background，
+       * 会因 dark class 尚未挂载、CSS 变量未设置而被 HeroUI 默认值渲染为浅色，造成闪白。
+       */
+      html, body { background-color: transparent; }
+    </style>
   </head>
-  <body class="bg-background text-foreground">
+  <body class="text-foreground">
     <div id="root"></div>
   </body>
 </html>

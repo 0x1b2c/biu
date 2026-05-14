@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { readableColor } from "color2k";
 import { useShallow } from "zustand/react/shallow";
@@ -56,8 +56,10 @@ const Theme = ({ children }: Props) => {
     };
   }, [themeMode]);
 
-  // 将主题相关样式应用到 :root 和 body，确保挂载在 body 上的组件可读取到
-  useEffect(() => {
+  // 将主题相关样式应用到 :root 和 body，确保挂载在 body 上的组件可读取到。
+  // 用 useLayoutEffect 在浏览器 paint 前同步设置 dark class 与 CSS 变量，
+  // 避免首次 commit 后 useEffect 异步执行导致的一帧浅色闪烁。
+  useLayoutEffect(() => {
     const root = document.documentElement;
     const themeName = resolveTheme(themeMode, systemTheme);
 
@@ -88,7 +90,7 @@ const Theme = ({ children }: Props) => {
   const contextValue = useMemo(() => ({ theme: resolveTheme(themeMode, systemTheme) }), [themeMode, systemTheme]);
 
   return (
-    <main className="h-screen w-screen overflow-hidden">
+    <main className="bg-background h-screen w-screen overflow-hidden">
       <ThemeNameContext value={contextValue}>{children}</ThemeNameContext>
     </main>
   );

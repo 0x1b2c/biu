@@ -1,8 +1,10 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, nativeTheme } from "electron";
 import isDev from "electron-is-dev";
 import log from "electron-log";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { DARK_BACKGROUND_COLOR, LIGHT_BACKGROUND_COLOR } from "@shared/constants/theme";
 
 import { applyProxySettings } from "./ipc/app";
 import { channel } from "./ipc/channel";
@@ -32,11 +34,28 @@ if (isDev) {
 
 let mainWindow: BrowserWindow | null = null;
 
+const HEX_RE = /^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/;
+
+// 同步推断窗口初始背景色，避免 dark mode 启动时白屏闪烁。
+// 必须在 BrowserWindow 构造前调用，时序晚于此则窗口先以默认白底创建。
+function resolveInitialBackgroundColor(): string {
+  const settings = appSettingsStore.get("appSettings");
+  const customBg = settings?.backgroundColor;
+  if (customBg && HEX_RE.test(customBg)) {
+    return customBg;
+  }
+  const themeMode = settings?.themeMode ?? "system";
+  const isDark = themeMode === "dark" || (themeMode === "system" && nativeTheme.shouldUseDarkColors);
+  return isDark ? DARK_BACKGROUND_COLOR : LIGHT_BACKGROUND_COLOR;
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     title: isDev ? "Biu-dev" : "Biu",
     icon: getWindowIcon(),
-    show: true,
+    // 先隐藏，等首帧 ready-to-show 后再显示，配合 backgroundColor 消除启动闪烁
+    show: false,
+    backgroundColor: resolveInitialBackgroundColor(),
     hasShadow: true,
     width: 1200,
     height: 800,
@@ -60,6 +79,10 @@ function createWindow() {
       nodeIntegration: false,
       devTools: isDev,
     },
+  });
+
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.show();
   });
 
   // 禁止通过中键/target=_blank/window.open 等方式在 Electron 中打开新窗口
